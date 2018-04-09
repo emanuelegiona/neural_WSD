@@ -1,6 +1,11 @@
 ### Still work in progress
 
+# Neural WSD
+
+This project aims to replicate Google's ["Semi-supervised Word Sense Disambiguation with Neural Models"][1]
+
 ## Training
+
 Start training by using this command:
 
   `./train.py <path/to/training_set> <path/to/model>`
@@ -14,6 +19,7 @@ named `word_guesser.pt`, overwriting it in case it already exists. By starting a
 the training will retrain the model (for example to resume training).
 
 ## Testing
+
 Start querying the model by using this command:
 
   `./query.py <path/to/test_set> <path/to/model>`
@@ -24,3 +30,5 @@ where:
 
 The model file is not mandatory: if not specified, it will assume there is a model stored in `word_guesser.pt`, while
 specifying a model file, the model stored in that file will be used for predictions.
+
+[1](https://research.google.com/pubs/pub45729.html?authuser=0)
