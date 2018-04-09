@@ -6,7 +6,11 @@ This project aims to replicate Google's ["Semi-supervised Word Sense Disambiguat
 
 Dictionary built using [Google English One Million 1-grams](http://storage.googleapis.com/books/ngrams/books/datasetsv2.html), sorting each word by its global frequency.
 
-## Training
+**This project is for educational purposes only**
+
+## How to use
+
+### Training
 
 Start training by using this command:
 
@@ -20,7 +24,7 @@ The model file is not mandatory: if not specified, it will assume there is no mo
 named `word_guesser.pt`, overwriting it in case it already exists. By starting a training specifying a model file,
 the training will retrain the model (for example to resume training).
 
-## Testing
+### Testing
 
 Start querying the model by using this command:
 
