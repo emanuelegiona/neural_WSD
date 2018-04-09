@@ -2,7 +2,9 @@
 
 # Neural WSD
 
-This project aims to replicate Google's ["Semi-supervised Word Sense Disambiguation with Neural Models"][1]
+This project aims to replicate Google's ["Semi-supervised Word Sense Disambiguation with Neural Models"](https://research.google.com/pubs/pub45729.html?authuser=0).
+
+Dictionary built using [Google English One Million 1-grams](http://storage.googleapis.com/books/ngrams/books/datasetsv2.html), sorting each word by its global frequency.
 
 ## Training
 
@@ -30,5 +32,3 @@ where:
 
 The model file is not mandatory: if not specified, it will assume there is a model stored in `word_guesser.pt`, while
 specifying a model file, the model stored in that file will be used for predictions.
-
-[1](https://research.google.com/pubs/pub45729.html?authuser=0)
