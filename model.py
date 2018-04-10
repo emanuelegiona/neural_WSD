@@ -19,7 +19,8 @@ class WordGuesser(nn.Module):
         self.window_dim = window_dim
         self.word_embeddings = nn.Embedding(vocabulary_dim, embedding_dim)
         self.lstm = nn.LSTM(embedding_dim, hidden_dim)
-        self.extract_context = nn.Linear((2 * window_dim + 1) * hidden_dim, context_dim)
+        #self.extract_context = nn.Linear((2 * window_dim + 1) * hidden_dim, context_dim)
+        self.extract_context = nn.Linear(hidden_dim, context_dim)
         self.predict = nn.Linear(context_dim, vocabulary_dim)
         self.hidden = self.init_hidden()
 
@@ -27,12 +28,14 @@ class WordGuesser(nn.Module):
         return (autograd.Variable(torch.zeros(1, self.batch_dim, self.hidden_dim).cuda()),
                 autograd.Variable(torch.zeros(1, self.batch_dim, self.hidden_dim).cuda()))
 
-    def forward(self, sentence):
+    def forward(self, sentence, hidden):
         #0 rimpiazza parola w con $ --> nel training
         #1 consuma tutte le parole della frase
         embeddings = self.word_embeddings(sentence)
-        lstm_out, self.hidden = self.lstm(embeddings.permute(1, 0, 2), self.hidden)
-        lstm_out = lstm_out.view(-1, (2 * self.window_dim + 1) * self.hidden_dim)
+        out, self.hidden = self.lstm(embeddings.permute(1, 0, 2), hidden)
+        lstm_out = out[-1]
+        #print(lstm_out)
+        #lstm_out = lstm_out.view(-1, (2 * self.window_dim + 1) * self.hidden_dim)
 
         #2 extract_context --> contesto c
         context = self.extract_context(lstm_out)

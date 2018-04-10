@@ -20,10 +20,10 @@ context_dim = 256
 embedding_dim = 256
 learning_rate = 0.1
 chunk_dim = 1024*1000
-window_dim = 20
+window_dim = 10
 batch_dim = 32
-num_epoch = 10000
-save_every = 10000
+num_epoch = 1
+save_every = 5000
 modelfile = 'word_guesser.pt'
 logfile = 'word_guesser.log'
 # ---
@@ -107,14 +107,51 @@ def split_routine():
             f_log.write('Finished splitting file on %s\n' % (data.format_date(time.time())))
             f_log.flush()
 
-def batch_routine(word_to_ix):
-    incomplete_batches = list()
+def create_batches(sentences):
+    batches = ""
+    batched_sents = list()
+    batched_targets = list()
     preproc_sents = list()
     preproc_targets = list()
+
+    for sent in sentences:
+        masked_sents, words = data.mask_words(sent)
+        if masked_sents is None:
+            continue
+
+        for i in range(len(masked_sents)):
+            sent_list = masked_sents[i]
+            word = words[i]
+            sent_tensor, target = data.prepare_sequence(sent_list, word, word_to_ix, window_dim)
+            if sent_tensor is None:
+                continue
+
+            preproc_sents.append(sent_tensor)
+            preproc_targets.append(target)
+            if len(preproc_sents) == batch_dim:
+                batched_sents.append(preproc_sents)
+                batched_targets.append(preproc_targets)
+                preproc_sents = list()
+                preproc_targets = list()
+
+    if len(preproc_sents) > 0:
+        '''
+        #pad the remaining batch dim
+        sent_list = ['PAD'] * (2 * window_dim + 1)
+        sent_tensor = data.prepare_tensor(sent_list, word_to_ix)
+        target = word_to_ix['PAD']
+        while len(preproc_sents) < batch_dim:
+            preproc_sents.append(sent_tensor)
+            preproc_targets.append(target)
+        '''
+        batched_sents.append(preproc_sents)
+        batched_targets.append(preproc_targets)
+
+    batches = (numpy.array(batched_sents), numpy.array(batched_targets))
+    return batches
+
+def batch_routine(word_to_ix):
     while True:
-        batches = ""
-        batches_sents = list()
-        batches_targets = list()
         sents = ""
         with sent_q_cv:
             while sent_q.empty():
@@ -124,105 +161,22 @@ def batch_routine(word_to_ix):
             sents = sent_q.get()
 
         if sents == "EOF":
-            if len(incomplete_batches) > 0:
-                for sent in incomplete_batches:
+            break
 
-                    with open("training_set.txt", 'a') as f_out:
-                        f_out.write(sent + "\n")
-                        f_out.flush()
-
-                    masked_sents, words = data.mask_words(sent)
-                    if masked_sents is None:
-                        continue
-
-                    for i in range(len(masked_sents)):
-                        sent_list = masked_sents[i]
-                        word = words[i]
-
-                        with open("training_set.txt", 'a') as f_out:
-                            msg = ('%s\n%s\n' % (sent_list, word))
-                            f_out.write(msg)
-                            f_out.flush()
-
-                        sent_tensor, target = data.prepare_sequence(sent_list, word, word_to_ix, window_dim)
-
-                        with open("training_set.txt", 'a') as f_out:
-                            msg = ('%s\n%s\n' % (sent_tensor, target))
-                            f_out.write(msg)
-                            f_out.write("---\n")
-                            f_out.flush()
-
-                        if sent_tensor is None:
-                            continue
-
-                        preproc_sents.append(sent_tensor)
-                        preproc_targets.append(target)
-                        if len(preproc_sents) == batch_dim:
-                            batches_sents.append(preproc_sents)
-                            batches_targets.append(preproc_targets)
-                            preproc_sents = list()
-                            preproc_targets = list()
-
-            if len(preproc_sents) > 0:
-                #pad the remaining batch dim
-                sent_list = ['PAD'] * (2 * window_dim + 1)
-                sent_tensor = data.prepare_tensor(sent_list, word_to_ix)
-                target = word_to_ix['PAD']
-                while len(preproc_sents) < batch_dim:
-                    preproc_sents.append(sent_tensor)
-                    preproc_targets.append(target)
-
-                batches_sents.append(preproc_sents)
-                batches_targets.append(preproc_targets)
-        else:
-            #not enough sentences to form a batch? standby them
-            if len(sents) < batch_dim:
-                incomplete_batches += sents
-                continue
+        sents_by_len = {}
+        for s in sents:
+            n = len(s.split())
+            if n in sents_by_len:
+                sents_by_len[n].append(s)
             else:
-                #create batch
-                for sent in sents:
+                sents_by_len[n] = [s]
 
-                    with open("training_set.txt", 'a') as f_out:
-                        f_out.write(sent + "\n")
-                        f_out.flush()
+        for k,s in sents_by_len.items():
+            batches = create_batches(s)
 
-                    masked_sents, words = data.mask_words(sent)
-                    if masked_sents is None:
-                        continue
-
-                    for i in range(len(masked_sents)):
-                        sent_list = masked_sents[i]
-                        word = words[i]
-
-                        with open("training_set.txt", 'a') as f_out:
-                            msg = ('%s\n%s\n' % (sent_list, word))
-                            f_out.write(msg)
-                            f_out.flush()
-
-                        sent_tensor, target = data.prepare_sequence(sent_list, word, word_to_ix, window_dim)
-
-                        with open("training_set.txt", 'a') as f_out:
-                            msg = ('%s\n%s\n' % (sent_tensor, target))
-                            f_out.write(msg)
-                            f_out.write("---\n")
-                            f_out.flush()
-
-                        if sent_tensor is None:
-                            continue
-
-                        preproc_sents.append(sent_tensor)
-                        preproc_targets.append(target)
-                        if len(preproc_sents) == batch_dim:
-                            batches_sents.append(preproc_sents)
-                            batches_targets.append(preproc_targets)
-                            preproc_sents = list()
-                            preproc_targets = list()
-
-        batches = (numpy.array(batches_sents), numpy.array(batches_targets))
-        with batch_q_cv:
-            batch_q.put(batches)
-            batch_q_cv.notify_all()
+            with batch_q_cv:
+                batch_q.put(batches)
+                batch_q_cv.notify_all()
 
         if sents == "EOF":
             break
@@ -235,30 +189,57 @@ def batch_routine(word_to_ix):
             f_log.write('Finished batching on %s\n' % (data.format_date(time.time())))
             f_log.flush()
 
+def repackage_hidden(h):
+    """Wraps hidden states in new Variables, to detach them from their history."""
+    if type(h) == autograd.Variable:
+        return autograd.Variable(h.data)
+    else:
+        return tuple(repackage_hidden(v) for v in h)
+
 def train(batches, batch_count, loss_acc, epoch, save_every):
+    #exit(1)
     batch_sents, batch_targets = batches
     for batch_num in range(len(batch_sents)):
+        sent_tensors = batch_sents[batch_num]
+
+        #dynamic batch dim to avoid filling the last batch with dummy sentences
+        curr_batch_dim = len(sent_tensors)
+        if curr_batch_dim <= batch_dim:
+            model.batch_dim = curr_batch_dim
         #1
+
         model.zero_grad()
-        model.hidden = model.init_hidden()
+        hidden = model.init_hidden()
+        #model.hidden = [repackage_hidden(hidden) for hidden in model.hidden]
 
         #2
         batch_count += 1
-        sent_tensors = batch_sents[batch_num]
+        #sent_tensors = batch_sents[batch_num]
         targets = batch_targets[batch_num]
 
+        '''
         if epoch == 0:
             with open("model_input.txt", 'a') as f_out:
                 msg = ('%s\t%s\n' % (sent_tensors, targets))
                 f_out.write(msg)
                 f_out.flush()
+        '''
 
         #3
         input_tensor = torch.LongTensor(sent_tensors)
         input_tensor = input_tensor.cuda()
         input_tensor = autograd.Variable(input_tensor)
 
-        prediction, context = model(input_tensor)
+        prediction, context = model(input_tensor, hidden)
+
+        '''
+        if batch_count % 32 == 0:
+            print('Epoch: %d' % (epoch))
+            for i, p in enumerate(prediction):
+                sorted_val = sorted(enumerate(numpy.array(p.data)), key=lambda x : x[1], reverse=True)
+                print([(ix_to_word[x[0]], x[1]) for x in sorted_val[:5]])
+            print("")
+        #'''
 
         target_tensor = torch.LongTensor(targets)
         target_tensor = target_tensor.cuda()
@@ -277,7 +258,8 @@ def train(batches, batch_count, loss_acc, epoch, save_every):
                 with open(logfile, 'a') as f_log:
                     f_log.write('%s\n' % (msg))
                     f_log.flush()
-            torch.save(model, modelfile)
+            #torch.save(model, modelfile)
+            torch.save(model.state_dict(), modelfile)
     return batch_count, loss_acc
 
 def train_routine(save_every):
@@ -315,14 +297,15 @@ def train_routine(save_every):
                 batch_count, loss_acc = train(batches, batch_count, loss_acc, epoch, save_every)
 
     #training over
-    msg = ('%s - Epochs: %d Batches: %d Loss: %f' % (data.elapsed(start), num_epoch, batch_count, loss_acc / batch_count))
+    msg = ('%s - Epochs: %d Batches: %d Loss: %f' % (data.elapsed(start), num_epoch, batch_count, loss_acc / (batch_count + 1)))
     msg = ('%s\nTraining ended on %s.\n' % (msg, data.format_date(time.time())))
     print(msg)
     with log_lock:
         with open(logfile, 'a') as f_log:
             f_log.write('%s\n' % (msg))
             f_log.flush()
-    torch.save(model, modelfile)
+    #torch.save(model, modelfile)
+    torch.save(model.state_dict(), modelfile)
 
 print("Initializing...")
 torch.backends.cudnn.benchmark = True
@@ -333,15 +316,30 @@ with open(logfile, 'w') as f_log:
     f_log.flush()
 
 word_to_ix, ix_to_word = data.init_dictionary(dictionary_dim)
+'''
+word_to_ix = {"$":0, "PAD":1, "UNK":2}
+ix_to_word = ["$", "PAD", "UNK"]
 
+with open(sys.argv[1]) as f_in:
+    for l in f_in.readlines():
+        for w in l.strip().split(' '):
+            if w not in word_to_ix:
+                word_to_ix[w] = len(word_to_ix)
+                ix_to_word.append(w)
+#'''
+
+model = WordGuesser(hidden_units, context_dim, embedding_dim, len(word_to_ix), batch_dim, window_dim)
 if len(sys.argv) == 3:
     modelfile = sys.argv[2]
-    model = torch.load(modelfile)
-else:
-    model = WordGuesser(hidden_units, context_dim, embedding_dim, len(word_to_ix), batch_dim, window_dim)
+    #model = torch.load(modelfile)
+    model.load_state_dict(torch.load(modelfile))
+#else:
+    #model = WordGuesser(hidden_units, context_dim, embedding_dim, len(word_to_ix), batch_dim, window_dim)
+model.train()
 model = model.cuda()
 loss_fn = nn.CrossEntropyLoss()
 optimizer = optim.Adagrad(model.parameters(), lr=learning_rate)
+model.hidden = model.init_hidden()
 
 read_thread = threading.Thread(target=read_routine, args=[sys.argv[1], chunk_dim])
 split_thread = threading.Thread(target=split_routine)

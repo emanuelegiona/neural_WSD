@@ -103,6 +103,8 @@ def prepare_sequence(sent_list, word, to_ix, window_dim, training=True):
     if training:
         sent_list[word_id] = "$"
     '''
+
+    '''
     m = len(sent_list) / 2
     #uniform sentence length
     sent_list = sent_list[max(0, m - window_dim) : min(len(sent_list), m + window_dim)]
@@ -110,6 +112,7 @@ def prepare_sequence(sent_list, word, to_ix, window_dim, training=True):
     #pad sentence if necessary
     if len(sent_list) < (2 * window_dim + 1):
         sent_list += ['PAD'] * ((2 * window_dim + 1) - len(sent_list))
+    '''
 
     sent_tensor = prepare_tensor(sent_list, to_ix)
     if sent_tensor is None:
