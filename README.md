@@ -46,7 +46,7 @@ specifying a model file, the model stored in that file will be used for predicti
 
 ## Features
 
-- Multi-threaded operation in order to read from the training file, split to sentences, batching, training simultaneously (_producer-consumer pattern_)
+- Multi-threaded operation in order to read from the training corpus, split to sentences, batching, and training simultaneously (_producer-consumer pattern_)
 - Low RAM usage due to limited queues between threads and periodic dumps of created batches
 - Sentences are never padded, instead they are organized by their length and then created batches from sentences of all the same length
 - Dynamic batch size: will try to create batches of maximal size (hyper-parameter `batch_dim`) as much as possible, but batches smaller than the chosen size will not be padded
