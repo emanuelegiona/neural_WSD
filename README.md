@@ -1,6 +1,7 @@
 # Neural WSD
 
-This project aims to replicate Google's ["Semi-supervised Word Sense Disambiguation with Neural Models"](https://research.google.com/pubs/pub45729.html?authuser=0).
+This project aims to replicate Google's ["Semi-supervised Word Sense Disambiguation with Neural Models"](https://research.google.com/pubs/pub45729.html?authuser=0), covering only the LSTM language modeler part with
+unsupervised training.
 
 Dictionary built using [Google English One Million 1-grams](http://storage.googleapis.com/books/ngrams/books/datasetsv2.html), sorting each word by its global frequency.
 
